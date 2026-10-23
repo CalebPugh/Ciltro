@@ -2,7 +2,7 @@
 
 Private watch-together Chrome extension for two people. Initial target: **Netflix ad-free, desktop Chrome on macOS and Windows**. HBO Max and other services are future adapters.
 
-This is an early feasibility build, not a finished release. It has a Netflix player adapter, an extension panel, a local coordination server, two-person rooms, explicit playback opt-in, ordered play/pause/seek commands, manual resync, text chat, and room expiry. Netflix playback compatibility has **not** been verified on a signed-in account. Camera/microphone calling is not implemented.
+This is an early feasibility build, not a finished release. It has a Netflix player adapter, an extension panel, a local coordination server, two-person rooms, explicit playback opt-in, ordered play/pause/seek commands, manual resync, sender-labelled text chat, voice/video controls, and room expiry. Netflix playback compatibility has **not** been verified on a signed-in account. Opt-in voice/video calling is implemented with WebRTC, but actual Netflix permissions, physical devices and separate-network use remain unverified.
 
 ## Develop
 
@@ -16,7 +16,7 @@ npm run check
 npm start
 ```
 
-On your own computer, use the folder where you cloned the repository instead of `/workspace/Ciltro`. The coordination server binds to `127.0.0.1:8787`; `GET /health` returns `{"ok":true}`. `PORT` and `HOST` override the listening address. No database or credentials are needed for local development. Room state exists only in memory and is lost on server restart. Tests start their own server on port 18787.
+On your own computer, use the folder where you cloned the repository instead of `/workspace/Ciltro`. The coordination server binds to `127.0.0.1:8787`; `GET /health` returns `{"ok":true}`. `PORT` and `HOST` override the listening address. No database or credentials are needed for local development. See [voice/video setup](docs/calls.md) for device permissions and optional STUN/TURN configuration. Room state exists only in memory and is lost on server restart. Tests start their own server on port 18787.
 
 ## Load the extension (Mac or Windows)
 
@@ -35,12 +35,14 @@ A localhost server cannot connect two separate networks. That requires deploying
 
 ### Permissions and privacy
 
-The extension's content script is limited to `https://www.netflix.com/*`; `activeTab` supports the toolbar action. It does not read Netflix cookies, credentials, or send video content. The server receives room codes, content IDs, readiness, playback state and text messages. Codes are bearer secrets: anyone holding one can join an available slot. Do not post them publicly. The app writes no message or room-code logs, has no analytics, and stores room state only in memory. Empty rooms expire after ten minutes. Your hosting provider may retain network logs independently.
+The extension's content script is limited to `https://www.netflix.com/*`; `activeTab` supports the toolbar action. It does not read Netflix cookies, credentials, or send video content. The server receives room codes, content IDs, readiness, playback state, text messages, device on/off state and transient WebRTC signaling. Camera/microphone media travels over encrypted WebRTC, with a TURN relay if configured; see docs/calls.md. Codes are bearer secrets: anyone holding one can join an available slot. Do not post them publicly. The app writes no message or room-code logs, has no analytics, and stores room state only in memory. Empty rooms expire after ten minutes. Your hosting provider may retain network logs independently.
 
 ## Architecture and adding services
 
 - `extension/services/netflix.js`: service-specific recognition and experimental HTML video operations. Netflix may require a different supported integration if these operations fail.
 - `extension/content.js`: room and panel UI, playback event forwarding, remote-event suppression, text chat.
+- `extension/call.js`: opt-in capture, WebRTC negotiation, media controls and cleanup.
+- `server/calls.js`: room-authorized call signaling and lifecycle.
 - `extension/background.js`: toolbar activation; room lifetime currently belongs to the video page.
 - `server/rooms.js`: private room membership, capacity, canonical action order, validation and expiry.
 - `server/index.js`: HTTP health and bounded WebSocket message transport.
@@ -53,4 +55,4 @@ The finished flow must accept a room code, open the room's exact Netflix movie o
 
 ## Known gaps
 
-See [implementation checklist](docs/implementation.md) and [Netflix feasibility procedure](docs/netflix-feasibility.md). Refresh recovery, reconnect reservations, tab ownership across multiple tabs, buffering coordination, ad detection, drift/latency correction, invitation landing pages, camera/microphone calling, and deployment are unfinished. The current Resync uses the last accepted timestamp without elapsed-time extrapolation. Do not claim timing targets or full movie reliability from this prototype.
+See [implementation checklist](docs/implementation.md) and [Netflix feasibility procedure](docs/netflix-feasibility.md). Refresh recovery, reconnect reservations, tab ownership across multiple tabs, buffering coordination, ad detection, drift/latency correction, invitation landing pages, reliable Internet relay provisioning and deployment are unfinished. The current Resync uses the last accepted timestamp without elapsed-time extrapolation. Do not claim timing targets or full movie reliability from this prototype.

@@ -8,7 +8,7 @@
   root.innerHTML = globalThis.ciltroPanel;
   const $ = id => root.getElementById(id);
   let ws, code, ready = false, suppressUntil = 0, video, contentId, lastSequence = 0, members = [];
-  let connecting = false;
+  let connecting = false, selfId;
   const status = text => { $('status').textContent = text; };
   function render() {
     const inRoom = !!code;
@@ -21,8 +21,10 @@
     if ($('invite-code').value !== (code || '')) $('invite-code').value = code || '';
     $('member-count').textContent = `${members.length || 1} of 2 here`;
     $('you-status').textContent = ready ? 'Joined playback' : 'Not following playback yet';
-    const partner = members.length > 1;
-    $('partner-status').textContent = !partner ? 'Waiting to join' : members.some(p => p.video !== contentId) ? 'Different video open' : members.every(p => p.ready) ? 'Joined playback' : 'In the room';
+    const partnerMember = members.find(p => p.id !== selfId);
+    call.presence(partnerMember);
+    const partner = !!partnerMember;
+    $('partner-status').textContent = !partner ? 'Waiting to join' : members.some(p => p.video !== contentId) ? 'Different video open' : partnerMember?.ready ? 'Joined playback' : 'In the room';
     $('partner-avatar').classList.toggle('waiting', !partner);
     $('partner-avatar').textContent = partner ? 'P' : '?';
     $('ready').disabled = ready || !video;
@@ -30,8 +32,10 @@
     $('resync').disabled = !eligible();
     $('video-detail').textContent = contentId && video ? `Video ${contentId.split(':')[1]}` : 'Open a movie or episode';
   }
-  const log = (text, kind = 'message') => {
-    const line = document.createElement('div'); line.className = kind; line.textContent = text;
+  const log = (text, sender) => {
+    const line = document.createElement('div'); line.className = sender === selfId ? 'message own' : 'message';
+    const label = document.createElement('span'); label.className = 'sender'; label.textContent = sender === selfId ? 'You' : 'Your partner';
+    const body = document.createElement('span'); body.textContent = text; line.append(label, body);
     const conversation = $('conversation');
     const nearBottom = conversation.scrollHeight - conversation.scrollTop - conversation.clientHeight < 60;
     $('empty-chat').hidden = true; $('log').append(line);
@@ -41,6 +45,7 @@
   const service = globalThis.ciltroServices.find(adapter => adapter.id === 'netflix');
   const identify = () => service.identify();
   const send = data => { if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data)); else status('Disconnected — watching independently.'); };
+  const call = new globalThis.CiltroCall({root, send, inRoom: () => !!code && ws?.readyState === WebSocket.OPEN});
   const eligible = () => ready && members.length === 2 && members.every(p => p.ready && p.video === contentId);
   async function apply(state) {
     if (!state || !video || !ready || !eligible() || state.sequence < lastSequence) return;
@@ -63,14 +68,15 @@
     ws.onmessage = event => {
       if (ws !== socket) return;
       let m; try { m = JSON.parse(event.data); } catch { return; }
-      if (m.type === 'joined') { connecting = false; code = m.code; $('code').value = code; lastSequence = 0; $('log').replaceChildren(); $('empty-chat').hidden = false; $('settings').hidden = true; $('settings-toggle').setAttribute('aria-expanded', 'false'); status('Room joined. Both people must select Join playback.'); }
+      if (m.type === 'joined') { connecting = false; code = m.code; selfId = m.selfId; $('code').value = code; lastSequence = 0; $('log').replaceChildren(); $('empty-chat').hidden = false; $('settings').hidden = true; $('settings-toggle').setAttribute('aria-expanded', 'false'); status('Room joined. Both people must select Join playback.'); }
       if (m.type === 'presence') { members = m.members; status(members.length < 2 ? 'Waiting for partner.' : members.some(p => p.video !== contentId) ? 'Open the same Netflix video.' : eligible() ? 'Both ready for shared controls.' : 'Waiting for both people to join playback.'); }
       if (m.type === 'playback') { if (m.state) void apply(m.state); else status('No shared playback position yet. Both join playback, then use Netflix’s controls.'); }
-      if (m.type === 'error') { connecting = false; status(m.message); if (!code) { closeMessage = m.message; ws.close(); } }
-      if (m.type === 'chat') log(m.text);
+      if (m.type === 'error') { connecting = false; if (['call-join', 'call-state', 'call-leave', 'signal'].includes(m.requestType)) call.fail(m.message); else status(m.message); if (!code) { closeMessage = m.message; ws.close(); } }
+      if (m.type === 'chat') log(m.text, m.sender);
+      if (['call-start', 'signal', 'call-ended'].includes(m.type)) void call.handle(m);
       render();
     };
-    ws.onclose = () => { if (ws !== socket) return; connecting = false; ready = false; code = null; members = []; status(closeMessage || 'Disconnected — watching independently. Rejoin using the code.'); render(); };
+    ws.onclose = () => { if (ws !== socket) return; call.stop('Disconnected. Camera and microphone are off.'); connecting = false; ready = false; code = null; members = []; status(closeMessage || 'Disconnected — watching independently. Rejoin using the code.'); render(); };
     ws.onerror = () => { if (ws !== socket) return; closeMessage = 'Could not reach the server. Check Connection settings.'; connecting = false; status(closeMessage); render(); };
   }
   const act = action => { if (eligible() && Date.now() > suppressUntil && !video.seeking) send({type: 'action', action, position: video.currentTime, playing: !video.paused}); };
@@ -96,8 +102,9 @@
   $('copy').onclick = async () => { try { await navigator.clipboard.writeText(code); $('copy-label').textContent = 'Copied'; setTimeout(() => { $('copy-label').textContent = 'Copy'; }, 2000); } catch { $('invite-code').focus(); $('invite-code').select(); status('Select and copy the code manually.'); } };
   $('ready').onclick = () => { if (!code || !video) return status('Join a room first.'); ready = true; send({type: 'ready', ready: true, video: contentId}); render(); };
   $('resync').onclick = () => send({type: 'resync'});
-  $('leave').onclick = () => { ready = false; send({type: 'leave'}); ws?.close(); ws = null; code = null; members = []; lastSequence = 0; status('You left the room. Your Netflix playback is unchanged.'); render(); };
+  $('leave').onclick = () => { call.stop('Camera and microphone are off.', true); ready = false; send({type: 'leave'}); ws?.close(); ws = null; code = null; members = []; lastSequence = 0; status('You left the room. Your Netflix playback is unchanged.'); render(); };
   $('chat').onsubmit = event => { event.preventDefault(); if (!code) return status('Join a room first.'); send({type: 'chat', text: $('message').value}); $('message').value = ''; };
   chrome.runtime.onMessage.addListener(m => { if (m.type === 'ciltro:toggle') { host.style.display = host.style.display === 'none' ? 'block' : 'none'; detect(); } });
+  window.addEventListener('pagehide', () => call.stop('Camera and microphone are off.', true));
   setInterval(detect, 1500); detect();
 })();

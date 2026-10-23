@@ -28,7 +28,10 @@ This user-confirmed requirement supersedes the original manual-open/initial Join
 - [ ] Accurate resync position projection, RTT/clock-offset estimation, drift correction (RQ17–18).
 - [ ] Configure private TLS hosting and prove separate-network use (AT01, AT25/RQ25).
 - [ ] Show content titles, invitation links and installation landing page.
-- [ ] Add camera/microphone with explicit permission and independent mute/disable controls. Proposed: WebRTC media, existing server for signaling, STUN and TURN for reliable connections. Hosting/provider and costs remain undecided; no paid activation authorized.
+- [x] Implement opt-in voice/video, local/remote camera tiles, independent mic/camera toggles, explicit end-call, and sender-labelled text chat (RQ31–32). Device tracks are stopped on disable, call end, room leave, page exit and coordination close.
+- [x] Implement room-scoped WebRTC signaling, one offerer per call, stale-call rejection, and configurable ICE servers.
+- [ ] Verify actual received voice/video on physical devices and Netflix. Browser-level capture permissions/Permissions Policy, direct media and TURN connectivity are not release-validated.
+- [ ] Provision secure coordination hosting and an appropriate STUN/TURN relay for separate networks. Hosting/provider and costs remain undecided; no paid activation authorized.
 
 ## Milestone 4 — Recovery
 
@@ -46,6 +49,8 @@ This user-confirmed requirement supersedes the original manual-open/initial Join
 - [ ] 30-minute timing measurements, full movie, two computers on different networks (AT17–18).
 - [ ] Distribution folder, hosted service deployment, costs and user guide.
 
-Seven automated tests currently cover server room invariants and actual local WebSocket transport. These do not establish any Netflix, browser UI, cross-network, camera/microphone, or release acceptance result. No service accounts or credentials are required by the automated suite.
+Thirteen automated tests currently cover server room/call invariants and actual local WebSocket transport. These do not establish Netflix, physical-device media, cross-network, or release acceptance results. No service accounts or credentials are required by the automated suite.
 
 Panel update validation: Chromium fixture pages (not signed-in Netflix) with the real local WebSocket server exercised create, invalid invite, join, chat, readiness, close/reopen, leave, and connection settings without page errors. The panel, composer and Leave control stayed within 1280×720, 800×480 and 390×600 viewports. Local-network permission was granted for the test origin. This does not verify Netflix playback or OS-specific behavior.
+
+Voice/video validation: `npm test` passes 13 tests, including server call authorization, signal forwarding, role selection, malformed/stale signals and teardown. `python test/browser/check_calls.py --signaling-only` passes fixture-browser checks for synthetic-device opt-in, permission denial, two-way send/receive SDP negotiation, mute/unmute, camera on/off, end/rejoin, leave/disconnect cleanup, safe text rendering, sender labels and responsive bounds. **RTP audio, decoded remote video and connected-media assertions are skipped in this mode.** The default full browser test attempted here failed to establish media: this machine's managed Chromium `WebRtcIPHandling` policy disables non-proxied UDP and produced no ICE candidates, including with a loopback TCP TURN experiment. The policy was left unchanged. End-to-end media and Netflix checks remain unverified; see docs/calls.md.

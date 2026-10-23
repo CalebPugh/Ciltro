@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Ciltro — Watch together",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Private watch rooms for Netflix. Development feasibility build.",
   "permissions": ["activeTab"],
   "action": {"default_title": "Open Ciltro"},
   "background": {"service_worker": "background.js"},
-  "content_scripts": [{"matches": ["https://www.netflix.com/*"], "js": ["services/netflix.js", "panel.js", "content.js"], "run_at": "document_idle"}]
+  "content_scripts": [{"matches": ["https://www.netflix.com/*"], "js": ["services/netflix.js", "panel.js", "call.js", "content.js"], "run_at": "document_idle"}]
 }

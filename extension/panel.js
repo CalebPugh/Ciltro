@@ -1,6 +1,9 @@
 (() => {
   const icon = (name, size = 18) => {
     const paths = {
+      mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2m-7 9v3m-4 0h8"/>',
+      camera: '<rect x="3" y="5" width="12" height="14" rx="2"/><path d="m15 9 6-4v14l-6-4"/>',
+      phone: '<path d="M5 16v-4a14 14 0 0 1 14 0v4l-4-1v-3a9 9 0 0 0-6 0v3l-4 1Z"/>',
       close: '<path d="m6 6 12 12M6 18 18 6"/>',
       settings: '<path d="M4 7h16M4 17h16M8 4v6m8 4v6"/>',
       copy: '<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
@@ -57,6 +60,23 @@
     #invite-code { font: 11px ui-monospace, SFMono-Regular, monospace; border: 0; padding: 6px 0; background: transparent; text-overflow: ellipsis; }
     #copy { border: 0; min-height: 30px; font-size: 11px; padding: 5px 7px; flex-shrink: 0; }
     .actions { display: flex; gap: 7px; } #ready { flex: 1; font-size: 12px; } #resync { font-size: 12px; } #ready:disabled { opacity: .7; }
+    .call { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 13px; }
+    .call-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+    .call-title span:last-child { font-size: 10px; color: var(--muted); }
+    .call-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .call-tile { position: relative; aspect-ratio: 4/3; overflow: hidden; background: #07101f; border: 1px solid var(--line); border-radius: 8px; }
+    .call-tile video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #local-video { transform: scaleX(-1); }
+    .call-placeholder { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 3px; background: #101b2c; font-size: 11px; color: var(--muted); }
+    .call-placeholder svg { margin: auto; }
+    .tile-caption { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; gap: 4px; font-size: 9px; padding: 14px 7px 5px; background: linear-gradient(transparent, #050c19df); color: #e5eaf2; }
+    .call-buttons { display: flex; gap: 6px; margin-top: 9px; } .call-buttons button { flex: 1; min-width: 0; font-size: 10px; padding: 7px 6px; min-height: 32px; gap: 4px; }
+    .call-buttons button[aria-pressed="true"] { background: #26374d; border-color: #a5b1c3; }
+    #end-call { flex: 0 0 34px; color: #efb9c0; border-color: #78606d; }
+    #call-status { font-size: 10px; line-height: 1.5; color: var(--muted); margin-top: 8px; }
+    #enable-sound { margin-top: 7px; width: 100%; font-size: 11px; }
+    .message.own { background: #22344d; border-radius: 9px 9px 2px 9px; margin-left: 16px; }
+    .message .sender { display: block; color: #acbad0; font-size: 10px; font-weight: 600; margin-bottom: 3px; }
     .chat-area { display: flex; flex-direction: column; flex: 1; min-height: 170px; border-top: 1px solid var(--line); }
     .chat-heading { display: flex; align-items: center; gap: 7px; padding: 13px 18px 9px; color: #d0d8e5; font-size: 12px; }
     .conversation { flex: 1; overflow-y: auto; min-height: 60px; padding: 4px 18px 12px; scrollbar-width: thin; scrollbar-color: #465268 transparent; }
@@ -83,9 +103,10 @@
         <div class="participant"><div id="partner-avatar" class="avatar waiting" aria-hidden="true">?</div><div class="participant-text"><strong>Your partner</strong><p id="partner-status">Waiting to join</p></div></div>
         <div class="invite"><label for="invite-code" class="eyebrow">Invite your partner</label><div class="invite-row"><input id="invite-code" readonly aria-label="Your invitation code"><button id="copy" aria-label="Copy invitation code">${icon('copy', 14)}<span id="copy-label">Copy</span></button></div></div>
         <div class="actions"><button id="ready" class="primary">${icon('play', 15)}<span id="ready-label">Join playback</span></button><button id="resync" title="Follow the room’s accepted playback position">${icon('resync', 15)}Resync</button></div>
+        <div class="call"><div class="call-title"><span class="eyebrow">Face to face</span><span>Only shared when you join</span></div><div class="call-tiles"><div class="call-tile"><video id="local-video" autoplay muted playsinline aria-label="Your camera preview"></video><div id="local-placeholder" class="call-placeholder">${icon('camera', 22)}<span>Camera off</span></div><div class="tile-caption"><span>You</span><span id="local-media-status">Mic off</span></div></div><div class="call-tile"><video id="remote-video" autoplay playsinline aria-label="Your partner’s camera and voice"></video><div id="remote-placeholder" class="call-placeholder">${icon('people', 22)}<span id="remote-placeholder-label">Partner’s camera off</span></div><div class="tile-caption"><span>Your partner</span><span id="remote-media-status">Not in call</span></div></div></div><div id="call-start" class="call-buttons"><button id="join-voice">${icon('mic', 15)}Join voice</button><button id="join-video">${icon('camera', 15)}Join video</button></div><div id="call-controls" class="call-buttons" hidden><button id="toggle-microphone" aria-pressed="false">${icon('mic', 14)}<span id="microphone-label">Unmute mic</span></button><button id="toggle-camera" aria-pressed="false">${icon('camera', 14)}<span id="camera-label">Camera on</span></button><button id="end-call" aria-label="End call for both participants" title="End call for both participants">${icon('phone', 16)}</button></div><button id="enable-sound" hidden>Enable call sound</button><p id="call-status" role="status" aria-live="polite">Join voice or video when you’re ready.</p></div>
       </div>
     </div>
     <div id="chat-area" class="chat-area" hidden><div class="chat-heading">${icon('chat', 15)}<span>Conversation</span></div><div id="conversation" class="conversation"><div id="empty-chat" class="empty">${icon('chat', 25)}<strong>Make yourself at home.</strong><p>Send a message while you watch together.</p></div><div id="log" role="log" aria-label="Room messages" aria-live="polite" aria-relevant="additions"></div></div><form id="chat"><label for="message" hidden>Message your partner</label><input id="message" placeholder="Say something…" maxlength="1000" autocomplete="off"><button id="send" type="submit" aria-label="Send message">${icon('send', 17)}</button></form></div>
-    <footer class="footer"><p>Preview · Voice & video coming later</p><button id="leave" hidden>${icon('leave', 14)}Leave room</button></footer>
+    <footer class="footer"><p>Private room · Preview</p><button id="leave" hidden>${icon('leave', 14)}Leave room</button></footer>
   </section>`;
 })();
