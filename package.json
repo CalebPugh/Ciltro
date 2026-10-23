@@ -1,0 +1,6 @@
+{
+  "name": "ciltro", "version": "0.1.0", "private": true, "type": "module",
+  "scripts": {"start": "node server/index.js", "test": "node --test", "check": "node --check extension/content.js && node --check extension/background.js && node --check server/index.js"},
+  "dependencies": {"ws": "8.18.3"},
+  "engines": {"node": ">=22"}
+}
