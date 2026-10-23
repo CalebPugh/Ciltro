@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/index.js",
     "test": "node --test",
-    "check": "node --check extension/content.js && node --check extension/background.js && node --check server/index.js"
+    "check": "node --check extension/content.js && node --check extension/panel.js && node --check extension/services/netflix.js && node --check extension/background.js && node --check server/index.js"
   },
   "dependencies": {
     "ws": "8.22.0"

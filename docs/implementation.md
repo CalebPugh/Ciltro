@@ -41,8 +41,11 @@ This user-confirmed requirement supersedes the original manual-open/initial Join
 
 ## Milestone 5 — Acceptance and packaging
 
+- [x] Initial navy-and-grey panel redesign: state-specific setup/room screens, compact invitation and playback actions, participant rows, bounded scrollable chat, and connection settings behind a header control.
 - [ ] Final sidebar design, all screen states, keyboard and screen-reader review (AT19).
 - [ ] 30-minute timing measurements, full movie, two computers on different networks (AT17–18).
 - [ ] Distribution folder, hosted service deployment, costs and user guide.
 
 Seven automated tests currently cover server room invariants and actual local WebSocket transport. These do not establish any Netflix, browser UI, cross-network, camera/microphone, or release acceptance result. No service accounts or credentials are required by the automated suite.
+
+Panel update validation: Chromium fixture pages (not signed-in Netflix) with the real local WebSocket server exercised create, invalid invite, join, chat, readiness, close/reopen, leave, and connection settings without page errors. The panel, composer and Leave control stayed within 1280×720, 800×480 and 390×600 viewports. Local-network permission was granted for the test origin. This does not verify Netflix playback or OS-specific behavior.

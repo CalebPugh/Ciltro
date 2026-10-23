@@ -27,7 +27,7 @@ On your own computer, use the folder where you cloned the repository instead of 
 5. Both people explicitly select **Join playback**. Use Netflix's normal controls and verify the other player follows. This is a feasibility experiment, not proof of service support.
 6. Leave stops shared commands without pausing local playback. Closing the panel keeps the active page connection alive.
 
-The panel overlays the right edge of the page in this first prototype. Resizing the video into a dedicated sidebar, fullscreen support, and final visual design remain future work.
+The navy-and-grey panel overlays the right edge of the page and fits within the viewport. Connection settings are under the sliders button in its header; room controls replace setup after joining. Resizing the video into a dedicated sidebar, fullscreen support, and final visual design remain future work.
 
 ### Two physical computers
 
